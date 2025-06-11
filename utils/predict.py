@@ -6,7 +6,7 @@ import joblib
 
 # Load model & feature
 model = joblib.load('model/model_ckd.pkl')
-feature_names = ['hemo', 'pcv', 'sg', 'rc', 'bgr', 'bu', 'al', 'dm', 'sc', 'htn', 'classification']
+feature_names = ['hemo', 'pcv', 'sg', 'rc', 'bgr', 'bu', 'al', 'dm', 'sc', 'htn']
 
 def prediksi_dan_penjelasan(data_dict):
     input_array = np.array([data_dict[f] for f in feature_names]).reshape(1, -1)

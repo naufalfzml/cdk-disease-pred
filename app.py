@@ -66,15 +66,15 @@ if submitted:
     st.subheader("📌 Penjelasan Model (SHAP)")
     shap_values = explainer.shap_values(input_df)
 
-    # Gunakan waterfall plot yang aman untuk 1 sampel
     fig, ax = plt.subplots(figsize=(10, 4))
     shap.plots.waterfall(
         shap.Explanation(
-            values=shap_values[1][0],
-            base_values=explainer.expected_value[1],
+            values=shap_values[0],  # ✅ karena hanya 1 output (bukan multi-kelas)
+            base_values=explainer.expected_value,  # ✅ satu nilai saja
             data=input_df.iloc[0],
             feature_names=input_df.columns.tolist()
         ),
         max_display=10
     )
+
     st.pyplot(fig)

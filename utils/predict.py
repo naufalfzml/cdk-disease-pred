@@ -22,7 +22,7 @@ def prediksi_dan_penjelasan(data_dict):
     # Ambil top fitur penyebab (nilai absolut tertinggi)
     shap_df = pd.DataFrame({
         'Fitur': feature_names,
-        'SHAP Value': shap_values[1][0],
+        'SHAP Value': shap_values[0],
         'Nilai Input': input_array[0]
     })
     shap_df['Kontribusi'] = shap_df['SHAP Value'].abs()

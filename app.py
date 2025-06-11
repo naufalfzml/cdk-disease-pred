@@ -74,12 +74,6 @@ if submitted:
         # Hitung SHAP values
         shap_values = explainer(input_df)
         
-        # Debug: Print shapes untuk troubleshooting
-        st.write("Debug Info:")
-        st.write(f"Input shape: {input_df.shape}")
-        st.write(f"SHAP values shape: {shap_values.shape if hasattr(shap_values, 'shape') else 'No shape attribute'}")
-        st.write(f"SHAP values type: {type(shap_values)}")
-        
         # Coba berbagai cara mengakses SHAP values
         try:
             # Metode 1: Untuk model binary classification

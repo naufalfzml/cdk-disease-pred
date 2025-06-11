@@ -6,8 +6,8 @@ import matplotlib.pyplot as plt
 
 st.title("Prediksi Risiko CKD (Chronic Kidney Disease) dengan XAI")
 
+# Load model
 model = joblib.load("model_ckd.pkl")
-
 explainer = shap.TreeExplainer(model)
 
 # Input data dari user
@@ -16,16 +16,15 @@ with st.form("input_form"):
     albumin = st.slider("Albumin", min_value=0.0, max_value=5.0, value=3.0, step=1.0)
     serum_creatinine = st.slider("Serum Creatinine", value=2.0)
     rc = st.slider("Red Blood Cells", min_value=1.13, max_value=2.20, value=1.50, step=0.01)
-    pcv = st.slider("Packed Cell Volume", min_value=24.0, max_value=52.0, value=38.0) 
+    pcv = st.slider("Packed Cell Volume", min_value=24.0, max_value=52.0, value=38.0)
     sg = st.slider("Specific Gravity", min_value=1.005, max_value=1.025, value=1.01, step=0.001, format="%.3f")
     bgr = st.slider("Blood Glucose Random", min_value=3.13, max_value=6.20, value=5.00)
     bu = st.slider("Blood Urea", min_value=0.91, max_value=6.00, value=3.00)
     dm = st.selectbox("Diabetes Mellitus", ('Yes', 'No'))
-    dm = dm.lower()
     htn = st.selectbox("Hypertension", ('Yes', 'No'))
-    htn = htn.lower()
-    dm = 1 if dm == 'yes' else 0
-    htn = 1 if htn == 'yes' else 0
+    
+    dm = 1 if dm.lower() == 'yes' else 0
+    htn = 1 if htn.lower() == 'yes' else 0
 
     submitted = st.form_submit_button("Prediksi")
 
@@ -41,7 +40,6 @@ if submitted:
         'dm': dm,
         'sc': serum_creatinine,
         'htn': htn,
-        # 'classification': 0.0  # atau abaikan kalau bukan inputan user
     }])
 
     # Prediksi
@@ -64,13 +62,19 @@ if submitted:
     st.write(f"**Probabilitas terkena CKD:** {proba_percent}%")
     st.write(f"**Kategori Risiko:** {risk_level}")
 
-
-    import sklearn
-    print(sklearn.__version__)
     # SHAP Explanation
     st.subheader("📌 Penjelasan Model (SHAP)")
     shap_values = explainer.shap_values(input_df)
-    st.set_option('deprecation.showPyplotGlobalUse', False)
-    shap.initjs()
-    shap.force_plot(explainer.expected_value[1], shap_values[1], input_df, matplotlib=True, show=False)
-    st.pyplot(bbox_inches='tight')
+
+    # Gunakan waterfall plot yang aman untuk 1 sampel
+    fig, ax = plt.subplots(figsize=(10, 4))
+    shap.plots.waterfall(
+        shap.Explanation(
+            values=shap_values[1][0],
+            base_values=explainer.expected_value[1],
+            data=input_df.iloc[0],
+            feature_names=input_df.columns.tolist()
+        ),
+        max_display=10
+    )
+    st.pyplot(fig)

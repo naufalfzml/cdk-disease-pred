@@ -9,7 +9,7 @@ albumin = st.slider("Albumin", min_value=0.0, max_value=5.0, value=3.0, step=1.0
 serum_creatinine = st.slider("Serum Creatinine", value=2.0)
 rc = st.slider("Red Blood Cells", min_value=1.13, max_value=2.20, value=1.50, step=0.01)
 pcv = st.slider("Packed Cell Volume", min_value=24.0, max_value=52.0, value=38.0) 
-sg = st.slider("Specific Gravity", min_value=1.005, max_value=1.025, value=1.01, step=0.001)
+sg = st.slider("Specific Gravity", min_value=1.005, max_value=1.025, value=1.01, step=0.001, format="%.3f")
 bgr = st.slider("Blood Glucose Random", min_value=3.13, max_value=6.20, value=5.00)
 bu = st.slider("Blood Urea", min_value=0.91, max_value=6.00, value=3.00)
 dm = st.selectbox("Diabetes Mellitus", ('Yes', 'No'))

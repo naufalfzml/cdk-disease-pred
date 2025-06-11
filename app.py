@@ -74,9 +74,6 @@ if submitted:
         # Hitung SHAP values
         shap_values = explainer(input_df)
         
-        # Debug: Print shapes untuk troubleshooting
-        st.write("Farhan Tes")
-        
         # Coba berbagai cara mengakses SHAP values
         try:
             # Metode 1: Untuk model binary classification

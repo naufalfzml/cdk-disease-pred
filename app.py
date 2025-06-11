@@ -9,7 +9,7 @@ st.title("Prediksi Risiko CKD (Chronic Kidney Disease) dengan XAI")
 
 # Load model
 try:
-    model = joblib.load("model_ckd.pkl")
+    model = joblib.load("model/model_ckd")
     explainer = shap.Explainer(model)
 except Exception as e:
     st.error(f"Error loading model: {e}")

@@ -32,7 +32,7 @@ if st.button("Prediksi"):
         'dm': dm,
         'sc': serum_creatinine,
         'htn': htn,
-        'classification': 0.0  # atau abaikan kalau bukan inputan user
+        # 'classification': 0.0  # atau abaikan kalau bukan inputan user
     }
 
     prob, kategori, penyebab_df = prediksi_dan_penjelasan(data)

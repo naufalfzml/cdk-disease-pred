@@ -18,7 +18,7 @@ def prediksi_dan_penjelasan(data_dict):
     shap_values = explainer.shap_values(input_array)
 
     # Pastikan array SHAP 1D
-    shap_value_1d = np.array(shap_values[0][0]).flatten()
+    shap_value_1d = np.array(shap_values[0]).flatten()
 
     shap_df = pd.DataFrame({
         'Fitur': feature_names,

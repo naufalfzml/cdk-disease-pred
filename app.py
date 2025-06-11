@@ -8,7 +8,7 @@ st.title("Prediksi Risiko CKD (Chronic Kidney Disease) dengan XAI")
 
 # Load model
 model = joblib.load("model_ckd.pkl")
-explainer = shap.TreeExplainer(model)
+explainer = shap.Explainer(model)  # gunakan generic Explainer (lebih fleksibel)
 
 # Input data dari user
 with st.form("input_form"):
@@ -64,9 +64,10 @@ if submitted:
 
     # SHAP Explanation
     st.subheader("📌 Penjelasan Model (SHAP)")
-    shap_values = explainer(input_df) 
+    
+    shap_values = explainer(input_df)  # ✅ SHAP API baru (langsung Explanation)
+    
+    # Plot SHAP waterfall untuk 1 sample
     fig, ax = plt.subplots(figsize=(10, 4))
-    shap.plots.waterfall(shap_values[0], max_display=10)  # ✅ ini satu sample
-    st.pyplot(fig)
-
-    st.pyplot(fig)
+    shap.plots.waterfall(shap_values[0], max_display=10, show=False)  # jangan show otomatis
+    st.pyplot(fig)  # tampilkan di Streamlit

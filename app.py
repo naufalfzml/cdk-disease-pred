@@ -14,7 +14,7 @@ explainer = shap.Explainer(model)  # gunakan generic Explainer (lebih fleksibel)
 with st.form("input_form"):
     hemoglobin = st.slider("Hemoglobin", min_value=7.9, max_value=16.8, value=10.0)
     albumin = st.slider("Albumin", min_value=0.0, max_value=5.0, value=3.0, step=1.0)
-    serum_creatinine = st.slider("Serum Creatinine", value=2.0)
+    serum_creatinine = st.slider("Serum Creatinine", min_value=0.33, max_value=4.50, value=2.0, step= 0.01)
     rc = st.slider("Red Blood Cells", min_value=1.13, max_value=2.20, value=1.50, step=0.01)
     pcv = st.slider("Packed Cell Volume", min_value=24.0, max_value=52.0, value=38.0)
     sg = st.slider("Specific Gravity", min_value=1.005, max_value=1.025, value=1.01, step=0.001, format="%.3f")
@@ -64,10 +64,32 @@ if submitted:
 
     # SHAP Explanation
     st.subheader("📌 Penjelasan Model (SHAP)")
-    
-    shap_values = explainer(input_df)  # ✅ SHAP API baru (langsung Explanation)
-    
-    # Plot SHAP waterfall untuk 1 sample
-    fig, ax = plt.subplots(figsize=(10, 4))
-    shap.plots.waterfall(shap_values[0], max_display=10, show=False)  # jangan show otomatis
-    st.pyplot(fig)  # tampilkan di Streamlit
+
+    shap_values = explainer(input_df)
+
+    # Ambil shap value untuk output class 1 (terkena CKD)
+    shap_single = shap_values[0, 1]
+
+    # Buat DataFrame dari SHAP values dan fitur
+    shap_df = pd.DataFrame({
+        'Fitur': input_df.columns,
+        'Nilai Fitur': input_df.iloc[0].values,
+        'SHAP Value': shap_single.values
+    })
+
+    # Hitung kontribusi absolut dan persentase kontribusi
+    shap_df['Kontribusi Absolut'] = shap_df['SHAP Value'].abs()
+    total_kontribusi = shap_df['Kontribusi Absolut'].sum()
+    shap_df['Persentase Pengaruh (%)'] = (shap_df['Kontribusi Absolut'] / total_kontribusi * 100).round(2)
+
+    # Ambil 3 teratas
+    top3 = shap_df.sort_values(by='Kontribusi Absolut', ascending=False).head(3)
+
+    # Tampilkan ke Streamlit
+    st.write("**🔝 3 Fitur yang Paling Mempengaruhi Prediksi CKD:**")
+    st.table(top3[['Fitur', 'Nilai Fitur', 'SHAP Value', 'Persentase Pengaruh (%)']])
+
+    # Tambahkan visualisasi (opsional)
+    fig, ax = plt.subplots(figsize=(8, 4))
+    shap.plots.waterfall(shap_single, max_display=3, show=False)
+    st.pyplot(fig)

@@ -17,6 +17,9 @@ dm = dm.lower()
 htn = st.selectbox("Hypertension", ('Yes', 'No'))
 htn = htn.lower()
 
+dm = 1 if dm == 'yes' else 0
+htn = 1 if htn == 'yes' else 0
+
 if st.button("Prediksi"):
     data = {
         'hemo': hemoglobin,

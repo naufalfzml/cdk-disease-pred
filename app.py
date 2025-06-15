@@ -9,8 +9,9 @@ st.title("Prediksi Risiko CKD (Chronic Kidney Disease) dengan XAI")
 
 # Load model
 try:
-    model = joblib.load("model/model_ckd.pkl")
-    explainer = shap.Explainer(model)
+    model = joblib.load("model/model_randomforest_ckd.pkl")
+    explainer = shap.TreeExplainer(model)
+
 except Exception as e:
     st.error(f"Error loading model: {e}")
     st.stop()
@@ -71,53 +72,88 @@ if submitted:
         # SHAP Explanation
         st.subheader("📌 Penjelasan Model (SHAP)")
 
-        # Hitung SHAP values
-        shap_values = explainer(input_df)
-        
-        # Coba berbagai cara mengakses SHAP values
+        # PERBAIKAN: Hitung SHAP values dengan error handling yang lebih baik
         try:
-            # Metode 1: Untuk model binary classification
-            if hasattr(shap_values, 'values') and len(shap_values.values.shape) == 3:
-                # Shape: (n_samples, n_features, n_classes)
-                shap_vals = shap_values.values[0, :, 1]  # Class 1 (CKD)
-            elif hasattr(shap_values, 'values') and len(shap_values.values.shape) == 2:
-                # Shape: (n_samples, n_features)
-                shap_vals = shap_values.values[0, :]
-            else:
-                # Fallback: gunakan TreeExplainer khusus untuk Decision Tree
-                explainer_tree = shap.TreeExplainer(model)
-                shap_values_tree = explainer_tree.shap_values(input_df)
-                
-                if isinstance(shap_values_tree, list):
-                    # Binary classification returns list of arrays
-                    shap_vals = shap_values_tree[1][0]  # Class 1 values
+            shap_values = explainer(input_df)
+            
+            # Extract SHAP values berdasarkan tipe output
+            if hasattr(shap_values, 'values'):
+                if len(shap_values.values.shape) == 3:
+                    # Binary classification dengan 2 kelas
+                    shap_vals = shap_values.values[0, :, 1]  # Kelas CKD (1)
+                elif len(shap_values.values.shape) == 2:
+                    # Output langsung untuk satu kelas
+                    shap_vals = shap_values.values[0, :]
                 else:
-                    shap_vals = shap_values_tree[0]
+                    raise ValueError("Format SHAP values tidak dikenali")
+            else:
+                # Jika tidak ada atribut values, coba akses langsung
+                shap_vals = shap_values[0]
+                
+        except Exception as shap_error:
+            st.warning(f"Error dengan SHAP Explainer: {shap_error}")
+            
+            # FALLBACK: Gunakan Linear/Kernel explainer sebagai alternatif
+            try:
+                st.write("Mencoba metode alternatif...")
+                
+                # Untuk model logistic regression, gunakan LinearExplainer
+                if hasattr(model, 'coef_'):
+                    explainer_alt = shap.LinearExplainer(model, sample_data)
+                    shap_values_alt = explainer_alt.shap_values(input_df)
                     
-        except Exception as e:
-            st.error(f"Error calculating SHAP values: {e}")
-            # Fallback sederhana tanpa SHAP
-            st.write("Menggunakan feature importance dari model sebagai alternatif:")
-            feature_importance = model.feature_importances_
-            feature_names = input_df.columns.tolist()
-            
-            importance_df = pd.DataFrame({
-                'Fitur': feature_names,
-                'Nilai Fitur': input_df.iloc[0].values,
-                'Feature Importance': feature_importance,
-                'Persentase Pengaruh (%)': (feature_importance / feature_importance.sum() * 100).round(2)
-            })
-            
-            top3 = importance_df.sort_values(by='Feature Importance', ascending=False).head(3)
-            st.write("**🔝 3 Fitur yang Paling Penting (Feature Importance):**")
-            st.table(top3)
-            st.stop()
+                    if isinstance(shap_values_alt, list):
+                        shap_vals = shap_values_alt[1][0]  # Kelas 1
+                    else:
+                        shap_vals = shap_values_alt[0]
+                else:
+                    # Gunakan KernelExplainer sebagai last resort
+                    explainer_kernel = shap.KernelExplainer(
+                        lambda X: model.predict_proba(X)[:, 1], 
+                        sample_data
+                    )
+                    shap_values_kernel = explainer_kernel.shap_values(input_df, nsamples=100)
+                    shap_vals = shap_values_kernel[0]
+                    
+            except Exception as fallback_error:
+                st.error(f"Semua metode SHAP gagal: {fallback_error}")
+                
+                # FINAL FALLBACK: Gunakan feature importance jika tersedia
+                if hasattr(model, 'coef_'):
+                    st.write("Menggunakan koefisien model sebagai pengganti SHAP:")
+                    feature_names = input_df.columns.tolist()
+                    feature_values = input_df.iloc[0].values.tolist()
+                    coefficients = model.coef_[0]
+                    
+                    coef_df = pd.DataFrame({
+                        'Fitur': feature_names,
+                        'Nilai Fitur': feature_values,
+                        'Koefisien': coefficients,
+                        'Kontribusi': np.array(feature_values) * coefficients
+                    })
+                    
+                    coef_df['Kontribusi Absolut'] = coef_df['Kontribusi'].abs()
+                    total_kontribusi = coef_df['Kontribusi Absolut'].sum()
+                    
+                    if total_kontribusi > 0:
+                        coef_df['Persentase Pengaruh (%)'] = (coef_df['Kontribusi Absolut'] / total_kontribusi * 100).round(2)
+                    else:
+                        coef_df['Persentase Pengaruh (%)'] = 0
+                    
+                    top3 = coef_df.sort_values(by='Kontribusi Absolut', ascending=False).head(3)
+                    st.write("**🔝 3 Fitur yang Paling Mempengaruhi (Berdasarkan Koefisien):**")
+                    st.table(top3[['Fitur', 'Nilai Fitur', 'Kontribusi', 'Persentase Pengaruh (%)']])
+                    
+                else:
+                    st.error("Model tidak memiliki koefisien yang dapat diakses")
+                
+                st.stop()
 
-        # Buat DataFrame dari SHAP values dan fitur
+        # Jika SHAP berhasil, lanjutkan dengan analisis
         feature_names = input_df.columns.tolist()
         feature_values = input_df.iloc[0].values.tolist()
         
-        # Pastikan semua array memiliki panjang yang sama
+        # Validasi panjang array
         if len(feature_names) != len(feature_values) or len(feature_names) != len(shap_vals):
             st.error(f"Length mismatch - Features: {len(feature_names)}, Values: {len(feature_values)}, SHAP: {len(shap_vals)}")
             st.stop()
@@ -128,7 +164,7 @@ if submitted:
             'SHAP Value': shap_vals
         })
 
-        # Hitung kontribusi absolut dan persentase kontribusi
+        # Hitung kontribusi absolut dan persentase
         shap_df['Kontribusi Absolut'] = shap_df['SHAP Value'].abs()
         total_kontribusi = shap_df['Kontribusi Absolut'].sum()
         
@@ -140,62 +176,41 @@ if submitted:
         # Ambil 3 teratas
         top3 = shap_df.sort_values(by='Kontribusi Absolut', ascending=False).head(3)
 
-        # Tampilkan ke Streamlit
+        # Tampilkan hasil
         st.write("**🔝 3 Fitur yang Paling Mempengaruhi Prediksi CKD:**")
         st.table(top3[['Fitur', 'Nilai Fitur', 'SHAP Value', 'Persentase Pengaruh (%)']])
 
-        # Visualisasi SHAP (dengan error handling)
+        # Visualisasi SHAP
         try:
-            st.write("**📊 SHAP Waterfall Plot:**")
+            st.write("**📊 SHAP Visualization:**")
+            
+            # Bar plot sederhana yang lebih reliable
             fig, ax = plt.subplots(figsize=(10, 6))
+            top_features = shap_df.sort_values(by='SHAP Value', key=abs, ascending=False).head(5)
             
-            # Coba buat waterfall plot
-            if hasattr(shap_values, 'values'):
-                # Gunakan shap_values object
-                if len(shap_values.values.shape) == 3:
-                    shap_single = shap_values[0, :, 1]
-                else:
-                    shap_single = shap_values[0]
-            else:
-                # Buat manual explanation object
-                shap_single = shap.Explanation(
-                    values=shap_vals,
-                    base_values=explainer.expected_value[1] if hasattr(explainer.expected_value, '__getitem__') else explainer.expected_value,
-                    data=feature_values
-                )
+            colors = ['red' if x < 0 else 'blue' for x in top_features['SHAP Value']]
+            bars = ax.barh(top_features['Fitur'], top_features['SHAP Value'], color=colors, alpha=0.7)
             
-            shap.plots.waterfall(shap_single, max_display=5, show=False)
+            ax.set_xlabel('SHAP Value')
+            ax.set_title('Top 5 Feature Contributions (SHAP Values)')
+            ax.axvline(x=0, color='black', linestyle='-', alpha=0.3)
+            
+            # Add value labels
+            for bar, value in zip(bars, top_features['SHAP Value']):
+                width = bar.get_width()
+                ax.text(width + (0.01 if width >= 0 else -0.01), 
+                       bar.get_y() + bar.get_height()/2, 
+                       f'{value:.3f}', 
+                       ha='left' if width >= 0 else 'right', 
+                       va='center')
+            
+            plt.tight_layout()
             st.pyplot(fig)
             plt.close()
             
-        except Exception as e:
-            st.warning(f"Tidak dapat menampilkan waterfall plot: {e}")
-            
-            # Alternative: Bar plot sederhana
-            try:
-                fig, ax = plt.subplots(figsize=(10, 6))
-                top_features = shap_df.sort_values(by='SHAP Value', key=abs, ascending=False).head(5)
-                
-                colors = ['red' if x < 0 else 'blue' for x in top_features['SHAP Value']]
-                bars = ax.barh(top_features['Fitur'], top_features['SHAP Value'], color=colors, alpha=0.7)
-                
-                ax.set_xlabel('SHAP Value')
-                ax.set_title('Top 5 Feature Contributions (SHAP Values)')
-                ax.axvline(x=0, color='black', linestyle='-', alpha=0.3)
-                
-                # Add value labels on bars
-                for bar, value in zip(bars, top_features['SHAP Value']):
-                    width = bar.get_width()
-                    ax.text(width + (0.01 if width >= 0 else -0.01), bar.get_y() + bar.get_height()/2, 
-                           f'{value:.3f}', ha='left' if width >= 0 else 'right', va='center')
-                
-                plt.tight_layout()
-                st.pyplot(fig)
-                plt.close()
-                
-            except Exception as e2:
-                st.error(f"Error creating alternative plot: {e2}")
+        except Exception as viz_error:
+            st.warning(f"Tidak dapat menampilkan visualisasi: {viz_error}")
 
     except Exception as e:
-        st.error(f"Error during prediction or explanation: {e}")
+        st.error(f"Error during prediction: {e}")
         st.write("Silakan coba lagi atau periksa model dan data input.")

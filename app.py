@@ -60,8 +60,8 @@ model = joblib.load("model/model_randomforest_ckd.pkl")
 explainer = shap.TreeExplainer(model)
 
 
-st.header('User Input Features:')
-uploaded_file = st.file_uploader("Upload your input CSV file", type=["csv"])
+# st.header('User Input Features:')
+# uploaded_file = st.file_uploader("Upload your input CSV file", type=["csv"])
 
 if uploaded_file is not None:
      input_df = pd.read_csv(uploaded_file)

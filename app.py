@@ -63,9 +63,10 @@ explainer = shap.TreeExplainer(model)
 # st.header('User Input Features:')
 # uploaded_file = st.file_uploader("Upload your input CSV file", type=["csv"])
 
-if uploaded_file is not None:
-     input_df = pd.read_csv(uploaded_file)
-else:
+# if uploaded_file is not None:
+#      input_df = pd.read_csv(uploaded_file)
+# else:
+
 # Input data dari user
     with st.form("input_form"):
         hemoglobin = st.slider("Hemoglobin (hemo)", min_value=7.9, max_value=16.8, value=10.0)
